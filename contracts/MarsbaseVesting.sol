@@ -59,19 +59,31 @@ contract MarsbaseVesting is ERC721Enumerable {
     mapping(uint256 => VestingRecord) private _vestings;
 
 	// splitting fee variable (multiplied by 1e5 to achieve 5 digits precision)
-	uint256 private _fee = 0;
+	uint256 private _feeSplit = 0;
 
 	// fee getter
-	function getFee() public view returns (uint256) {
-		return _fee;
+	function getFeeSplit() public view returns (uint256) {
+		return _feeSplit;
 	}
 	// fee setter for owner only
-	function setFee(uint256 newFee) public onlyOwner {
-		_fee = newFee;
+	function setFeeSplit(uint256 newFee) public onlyOwner {
+		_feeSplit = newFee;
+	}
+
+	// transfer fee variable (multiplied by 1e5 to achieve 5 digits precision)
+	uint256 private _feeTransfer = 0;
+
+	// fee getter
+	function getFeeTransfer() public view returns (uint256) {
+		return _feeTransfer;
+	}
+	// fee setter for owner only
+	function setFeeTransfer(uint256 newFee) public onlyOwner {
+		_feeTransfer = newFee;
 	}
 
 	// function to calculate the fee for a given amount and return both fee and rest amount
-	function calculateFee(uint256 amount) public view returns (uint256 fee, uint256 rest) {
+	function calculateFee(uint256 amount, uint256 _fee) public view returns (uint256 fee, uint256 rest) {
 		fee = amount * _fee / 1e5;
 		rest = amount - fee;
 		return (fee, rest);
@@ -82,11 +94,36 @@ contract MarsbaseVesting is ERC721Enumerable {
 		return _vestings[tokenId];
 	}
 
+	function _transfer(address _from, address _to, uint256 _tokenId) internal override {
+		// call parent transfer function
+		super._transfer(_from, _to, _tokenId);
+		// return if fee is zero
+		if (_feeTransfer == 0) {
+			return;
+		}
+		// calculate transfer fee
+		(, uint256 rest) = calculateFee(_vestings[_tokenId].amount, _feeTransfer);
+		// require rest to be greater than 0
+		require(rest > 0, "not enough tokens");
+		// subtract fee from vesting amount
+		_vestings[_tokenId].amount = rest;
+	}
+
+	function vest(
+        uint256 start,
+        uint256 end,
+        uint256 amount
+    ) public returns (uint256) {
+		// vest for msg.sender
+		return vest(start, end, amount, msg.sender);
+	}
+
     // function to wrap ERC20 tokens into NFT
     function vest(
         uint256 start,
         uint256 end,
-        uint256 amount
+        uint256 amount,
+		address receiver
     ) public returns (uint256) {
 		// console.log("vesting", start, end, amount);
         // require enough ERC20 allowance on token with address _tokenAddress
@@ -97,10 +134,15 @@ contract MarsbaseVesting is ERC721Enumerable {
 
         // mint token with new id
         uint256 tokenId = this.totalSupply();
-        _mint(msg.sender, tokenId);
+        _mint(receiver, tokenId);
 
         // transfer erc20 tokens from msg.sender to this contract address based on amount param
         IERC20(_tokenAddress).transferFrom(msg.sender, address(this), amount);
+
+		uint256 timestamp = block.timestamp;
+		// require start&end dates to not be more than 100 years into the future
+		require(start <= timestamp + 100 * 365 * 86400, "start date is too far");
+		require(end <= timestamp + 100 * 365 * 86400, "end date is too far");
 
         // add vesting data to _vestings
         _vestings[tokenId] = VestingRecord(start, end, amount, amount);
@@ -189,9 +231,9 @@ contract MarsbaseVesting is ERC721Enumerable {
 
 		// calculate fee and rest amount
 		uint256 fee = 0;
-		if (_fee > 0)
+		if (_feeSplit > 0)
 		{
-			(fee,) = calculateFee(vesting.amount);
+			(fee,) = calculateFee(vesting.amount, _feeSplit);
 
 			// require left amount to be gt fee
 			require(leftAmount > fee, "Left amount must be gt fee");

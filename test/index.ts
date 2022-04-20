@@ -74,7 +74,7 @@ describe("Greeter", function ()
 		await mbase.connect(cto).approve(vest.address, 1_000_000)
 
 		// vest 100k tokens for a month
-		let vestTx = await vest.connect(cto).vest(startDate, endDate, 100_000)
+		let vestTx = await vest.connect(cto)["vest(uint256,uint256,uint256)"](startDate, endDate, 100_000)
 		let vestTxResult = await vestTx.wait()
 		expect(vestTxResult.events?.length == 1)
 		// expect transfer tx
@@ -161,7 +161,7 @@ describe("Greeter", function ()
 		await mbase.connect(cto).approve(vest.address, ethers.constants.MaxUint256)
 
 		// vest CTO tokens
-		let vestTx = await vest.connect(cto).vest(startDate, endDate, ethers.constants.MaxUint256)
+		let vestTx = await vest.connect(cto)["vest(uint256,uint256,uint256)"](startDate, endDate, ethers.constants.MaxUint256)
 		let vestTxResult = await vestTx.wait()
 
 		// get tokenId from events
@@ -210,7 +210,7 @@ describe("Greeter", function ()
 		await mbase.connect(cto).approve(vest.address, 100_000)
 
 		// vest 100k tokens for a month
-		let vestTx = await vest.connect(cto).vest(startDate, endDate, 100_000)
+		let vestTx = await vest.connect(cto)["vest(uint256,uint256,uint256)"](startDate, endDate, 100_000)
 		let vestTxResult = await vestTx.wait()
 		expect(vestTxResult.events?.length == 1)
 		// expect transfer tx
@@ -283,6 +283,43 @@ describe("Greeter", function ()
 
 		// TODO: test unvesting
 	})
+	it('should subtract transfer fee from vested amount', async () => {
+		const MarsbaseToken = await ethers.getContractFactory("MarsbaseToken")
+		const MarsbaseVesting = await ethers.getContractFactory("MarsbaseVesting")
+		const mbase = await MarsbaseToken.deploy()
+		await mbase.deployed()
+		const vest = await MarsbaseVesting.deploy(mbase.address)
+		await vest.deployed()
+
+		// set transfer fee to 1%
+		await vest.setFeeTransfer(0.01 * 1e5)
+
+		const [owner, cto, investor] = await ethers.getSigners()
+
+		// mint 100k tokens to cto
+		await mbase.mint(cto.address, 100_000)
+
+		await mbase.connect(cto).approve(vest.address, 100_000)
+
+		let vestTx = await vest.connect(cto)["vest(uint256,uint256,uint256)"](0, 0, 100_000)
+		await vestTx.wait()
+
+		let tokenId = 0
+
+		// read vesting data
+		let vestingData = await vest.getVestingRecord(tokenId)
+		// expect vesting to be correct
+		expect(vestingData.amount).to.equal(100_000)
+
+		// transfer nft to investor
+		await vest.connect(cto).transferFrom(cto.address, investor.address, tokenId)
+
+		// read vesting data
+		vestingData = await vest.getVestingRecord(tokenId)
+
+		// check that fee was subtracted
+		expect(vestingData.amount).to.equal(99_000)
+	})
 	it('should split vesting nfts and subtract fee', async () => {
 		const MarsbaseToken = await ethers.getContractFactory("MarsbaseToken")
 		const MarsbaseVesting = await ethers.getContractFactory("MarsbaseVesting")
@@ -291,8 +328,8 @@ describe("Greeter", function ()
 		const vest = await MarsbaseVesting.deploy(mbase.address)
 		await vest.deployed()
 
-		// set fee to 1%
-		await vest.setFee(0.01 * 1e5)
+		// set split fee to 1%
+		await vest.setFeeSplit(0.01 * 1e5)
 
 		const [owner, cto, investor] = await ethers.getSigners()
 
@@ -308,7 +345,7 @@ describe("Greeter", function ()
 		await mbase.connect(cto).approve(vest.address, 100_000)
 
 		// vest 100k tokens for a month
-		let vestTx = await vest.connect(cto).vest(startDate, endDate, 100_000)
+		let vestTx = await vest.connect(cto)["vest(uint256,uint256,uint256)"](startDate, endDate, 100_000)
 		let vestTxResult = await vestTx.wait()
 		expect(vestTxResult.events?.length == 1)
 		// expect transfer tx
