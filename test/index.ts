@@ -283,4 +283,89 @@ describe("Greeter", function ()
 
 		// TODO: test unvesting
 	})
+	it('should split vesting nfts and subtract fee', async () => {
+		const MarsbaseToken = await ethers.getContractFactory("MarsbaseToken")
+		const MarsbaseVesting = await ethers.getContractFactory("MarsbaseVesting")
+		const mbase = await MarsbaseToken.deploy()
+		await mbase.deployed()
+		const vest = await MarsbaseVesting.deploy(mbase.address)
+		await vest.deployed()
+
+		// set fee to 1%
+		await vest.setFee(0.01 * 1e5)
+
+		const [owner, cto, investor] = await ethers.getSigners()
+
+		// mint 100k tokens to cto
+		await mbase.mint(cto.address, 100_000)
+
+		// set start date to tomorrow as timestamp
+		const startDate = (await ethers.provider.getBlock("latest")).timestamp + 86400
+		// set end date to startDate + 100 days
+		const endDate = startDate + 86400 * 100
+
+		// give vesting contract allowance for all cto tokens
+		await mbase.connect(cto).approve(vest.address, 100_000)
+
+		// vest 100k tokens for a month
+		let vestTx = await vest.connect(cto).vest(startDate, endDate, 100_000)
+		let vestTxResult = await vestTx.wait()
+		expect(vestTxResult.events?.length == 1)
+		// expect transfer tx
+		expect(vestTxResult.events?.[0].event).to.equal("Transfer")
+		// get tokenId from transfer event
+		let tokenId = vestTxResult.events?.[0]?.args?.tokenId
+		// expect tokenId to be BigNumber
+		expect(tokenId).to.be.instanceOf(ethers.BigNumber)
+
+		// read vesting nft from contract
+		let oldVesting = await vest.getVestingRecord(tokenId)
+		// expect vesting to be correct
+		expect(oldVesting.start).to.equal(startDate)
+		expect(oldVesting.end).to.equal(endDate)
+		expect(oldVesting.amount).to.equal(100_000)
+		expect(oldVesting.initialAmount).to.equal(100_000)
+
+		// send vesting nft to investor
+		await vest.connect(cto).transferFrom(cto.address, investor.address, tokenId)
+
+		// split vesting nft to two with 60/40 split
+		let splitTx = await vest.connect(investor).split(tokenId, 60_000, 40_000)
+		let splitTxResult = await splitTx.wait()
+
+		// expect first event to be Transfer
+		let [transferEvent, splitEvent] = splitTxResult.events!
+
+		let secondTokenId = transferEvent.args!.tokenId
+
+		// check for splitEvent fields
+		expect(splitEvent.event).to.equal("VestingSplit")
+		expect(splitEvent.args!.splitter).to.equal(investor.address)
+		expect(splitEvent.args!.oldVestingId).to.equal(tokenId)
+		expect(splitEvent.args!.oldAmount).to.equal(100_000)
+		expect(splitEvent.args!.newVestingId).to.equal(secondTokenId)
+		expect(splitEvent.args!.leftAmount).to.equal(59_000)
+		expect(splitEvent.args!.rightAmount).to.equal(40_000)
+
+		// get both vesting nfts from contract
+		let leftVesting = await vest.getVestingRecord(tokenId)
+		let rightVesting = await vest.getVestingRecord(secondTokenId)
+
+		// expect leftVesting to have correct params
+		expect(leftVesting.start).to.equal(startDate)
+		expect(leftVesting.end).to.equal(endDate)
+		expect(leftVesting.amount).to.equal(59_000)
+		expect(leftVesting.initialAmount).to.equal(59_000)
+
+		// expect rightVesting to have correct params
+		expect(rightVesting.start).to.equal(startDate)
+		expect(rightVesting.end).to.equal(endDate)
+		expect(rightVesting.amount).to.equal(40_000)
+		expect(rightVesting.initialAmount).to.equal(40_000)
+
+		// skip time to start date
+		await ethers.provider.send("evm_setNextBlockTimestamp", [startDate])
+
+		// TODO: test unvesting
+	})
 })

@@ -11,9 +11,29 @@ contract MarsbaseVesting is ERC721Enumerable {
     // address of the ERC20 token that will be vested
     address private _tokenAddress;
 
+	// contract owner
+	address private _owner;
+	
+	// change owner setter
+	modifier onlyOwner {
+		require(msg.sender == _owner, "Only owner");
+		_;
+	}
+
+	// owner getter
+	function getOwner() public view returns(address) {
+		return _owner;
+	}
+	// owner setter
+	function setOwner(address newOwner) public onlyOwner {
+		_owner = newOwner;
+	}
+
+
     // add constructor param with token address
     constructor(address tokenAddress) ERC721("OTC Marsbase Token", "MBASE") {
         _tokenAddress = tokenAddress;
+		_owner = msg.sender;
     }
 
 	// split event description
@@ -23,9 +43,10 @@ contract MarsbaseVesting is ERC721Enumerable {
 		uint256 oldAmount,
 		uint256 indexed newVestingId,
 		uint256 leftAmount,
-		uint256 rightAmount
+		uint256 rightAmount,
+		uint256 fee
 	);
-
+	
     // vesting record type
     struct VestingRecord {
         uint256 start;
@@ -36,6 +57,25 @@ contract MarsbaseVesting is ERC721Enumerable {
 
     // Mapping from token ID to vesting data
     mapping(uint256 => VestingRecord) private _vestings;
+
+	// splitting fee variable (multiplied by 1e5 to achieve 5 digits precision)
+	uint256 private _fee = 0;
+
+	// fee getter
+	function getFee() public view returns (uint256) {
+		return _fee;
+	}
+	// fee setter for owner only
+	function setFee(uint256 newFee) public onlyOwner {
+		_fee = newFee;
+	}
+
+	// function to calculate the fee for a given amount and return both fee and rest amount
+	function calculateFee(uint256 amount) public view returns (uint256 fee, uint256 rest) {
+		fee = amount * _fee / 1e5;
+		rest = amount - fee;
+		return (fee, rest);
+	}
 
 	// function to view VestingRecord by tokenId
 	function getVestingRecord(uint256 tokenId) public view returns (VestingRecord memory) {
@@ -147,6 +187,19 @@ contract MarsbaseVesting is ERC721Enumerable {
 		// require vesting amount to be equal to left+right
 		require(vesting.amount == leftAmount + rightAmount, "Amounts do not add up");
 
+		// calculate fee and rest amount
+		uint256 fee = 0;
+		if (_fee > 0)
+		{
+			(fee,) = calculateFee(vesting.amount);
+
+			// require left amount to be gt fee
+			require(leftAmount > fee, "Left amount must be gt fee");
+
+			// subtract fee from left amount
+			leftAmount -= fee;
+		}
+
 		// create new nft
 		uint256 newTokenId = this.totalSupply();
 		_mint(msg.sender, newTokenId);
@@ -159,7 +212,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 		_vestings[tokenId].initialAmount = leftAmount;
 
 		// fire event
-		emit VestingSplit(msg.sender, tokenId, vesting.amount, newTokenId, leftAmount, rightAmount);
+		emit VestingSplit(msg.sender, tokenId, vesting.amount, newTokenId, leftAmount, rightAmount, fee);
 
 		return newTokenId;
 	}
