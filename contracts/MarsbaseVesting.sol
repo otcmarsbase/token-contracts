@@ -16,15 +16,31 @@ contract MarsbaseVesting is ERC721Enumerable {
         _tokenAddress = tokenAddress;
     }
 
+	// split event description
+	event VestingSplit(
+		address indexed splitter,
+		uint256 indexed oldVestingId,
+		uint256 oldAmount,
+		uint256 indexed newVestingId,
+		uint256 leftAmount,
+		uint256 rightAmount
+	);
+
     // vesting record type
     struct VestingRecord {
         uint256 start;
         uint256 end;
         uint256 amount;
+		uint256 initialAmount;
     }
 
     // Mapping from token ID to vesting data
     mapping(uint256 => VestingRecord) private _vestings;
+
+	// function to view VestingRecord by tokenId
+	function getVestingRecord(uint256 tokenId) public view returns (VestingRecord memory) {
+		return _vestings[tokenId];
+	}
 
     // function to wrap ERC20 tokens into NFT
     function vest(
@@ -47,12 +63,23 @@ contract MarsbaseVesting is ERC721Enumerable {
         IERC20(_tokenAddress).transferFrom(msg.sender, address(this), amount);
 
         // add vesting data to _vestings
-        _vestings[tokenId] = VestingRecord(start, end, amount);
+        _vestings[tokenId] = VestingRecord(start, end, amount, amount);
 
         // require(!_vestings[tokenId].start, "Token is already wrapped");
         // _vestings[tokenId].start = block.timestamp;
 		return tokenId;
     }
+
+	function safeLerp(uint256 timePassed, uint256 amount, uint256 duration) public pure returns (uint256) {
+		if (timePassed >= duration)
+			return amount;
+		if (timePassed <= 0)
+			return 0;
+
+		// TODO: calculate with precision for all types of overflow
+
+		return amount * timePassed / duration;
+	}
 
 	function unvest(uint256 tokenId) public returns (uint256) {
 		// console.log("unvesting", tokenId);
@@ -77,7 +104,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 		uint256 timePassed = timestamp - vesting.start;
 
 		// calculate amount of tokens to be transferred back to msg.sender
-		uint256 amount = timePassed * vesting.amount / duration;
+		uint256 amount = safeLerp(timePassed, vesting.amount, duration);
 
 		// require amount to be greater than 0
 		require(amount > 0, "No tokens to unvest");
@@ -92,8 +119,8 @@ contract MarsbaseVesting is ERC721Enumerable {
 
 		// if remaining tokens are 0, burn token and remove vesting data
 		if (remaining == 0) {
-			_burn(tokenId);
 			delete _vestings[tokenId];
+			_burn(tokenId);
 		} else {
 			// otherwise, update vesting data
 			_vestings[tokenId].amount = remaining;
@@ -104,5 +131,36 @@ contract MarsbaseVesting is ERC721Enumerable {
 		IERC20(_tokenAddress).transfer(msg.sender, amount);
 
 		return amount;
+	}
+	function split(uint256 tokenId, uint256 leftAmount, uint256 rightAmount) public returns (uint256) {
+		// console.log("splitting", tokenId, leftAmount, rightAmount);
+		// require tokenId to exist and be owned by msg.sender
+		require(this.ownerOf(tokenId) == msg.sender, "Token is not owned by you");
+
+		// get tokenId vesting data
+		VestingRecord memory vesting = _vestings[tokenId];
+
+		// require amounts to be gt 0
+		require(leftAmount > 0, "Left amount must be gt 0");
+		require(rightAmount > 0, "Right amount must be gt 0");
+
+		// require vesting amount to be equal to left+right
+		require(vesting.amount == leftAmount + rightAmount, "Amounts do not add up");
+
+		// create new nft
+		uint256 newTokenId = this.totalSupply();
+		_mint(msg.sender, newTokenId);
+
+		// set new tokenId vesting data
+		_vestings[newTokenId] = VestingRecord(vesting.start, vesting.end, rightAmount, rightAmount);
+
+		// update old nft with left amount
+		_vestings[tokenId].amount = leftAmount;
+		_vestings[tokenId].initialAmount = leftAmount;
+
+		// fire event
+		emit VestingSplit(msg.sender, tokenId, vesting.amount, newTokenId, leftAmount, rightAmount);
+
+		return newTokenId;
 	}
 }
