@@ -220,6 +220,14 @@ describe("Greeter", function ()
 		// expect tokenId to be BigNumber
 		expect(tokenId).to.be.instanceOf(ethers.BigNumber)
 
+		// read vesting nft from contract
+		let oldVesting = await vest.getVestingRecord(tokenId)
+		// expect vesting to be correct
+		expect(oldVesting.start).to.equal(startDate)
+		expect(oldVesting.end).to.equal(endDate)
+		expect(oldVesting.amount).to.equal(100_000)
+		expect(oldVesting.initialAmount).to.equal(100_000)
+
 		// send vesting nft to investor
 		await vest.connect(cto).transferFrom(cto.address, investor.address, tokenId)
 
@@ -243,16 +251,36 @@ describe("Greeter", function ()
 		expect(transferEvent.args!.from).to.equal(ethers.constants.AddressZero)
 		expect(transferEvent.args!.to).to.equal(investor.address)
 
+		let secondTokenId = transferEvent.args!.tokenId
+
 		// check for splitEvent fields
 		expect(splitEvent.event).to.equal("VestingSplit")
 		expect(splitEvent.args!.splitter).to.equal(investor.address)
 		expect(splitEvent.args!.oldVestingId).to.equal(tokenId)
 		expect(splitEvent.args!.oldAmount).to.equal(100_000)
-		expect(splitEvent.args!.newVestingId).to.equal(transferEvent.args!.tokenId)
+		expect(splitEvent.args!.newVestingId).to.equal(secondTokenId)
 		expect(splitEvent.args!.leftAmount).to.equal(60_000)
 		expect(splitEvent.args!.rightAmount).to.equal(40_000)
 
+		// get both vesting nfts from contract
+		let leftVesting = await vest.getVestingRecord(tokenId)
+		let rightVesting = await vest.getVestingRecord(secondTokenId)
+
+		// expect leftVesting to have correct params
+		expect(leftVesting.start).to.equal(startDate)
+		expect(leftVesting.end).to.equal(endDate)
+		expect(leftVesting.amount).to.equal(60_000)
+		expect(leftVesting.initialAmount).to.equal(60_000)
+
+		// expect rightVesting to have correct params
+		expect(rightVesting.start).to.equal(startDate)
+		expect(rightVesting.end).to.equal(endDate)
+		expect(rightVesting.amount).to.equal(40_000)
+		expect(rightVesting.initialAmount).to.equal(40_000)
+
 		// skip time to start date
 		await ethers.provider.send("evm_setNextBlockTimestamp", [startDate])
+
+		// TODO: test unvesting
 	})
 })
