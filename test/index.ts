@@ -87,7 +87,7 @@ describe("Greeter", function ()
 		// console.log('minted')
 
 		// check that cto cannot unvest tokens
-		await expect(vest.connect(cto).unvest(tokenId)).to.be.revertedWith("Vesting has not started")
+		await expect(vest.connect(cto)["unvest(uint256)"](tokenId)).to.be.revertedWith("Vesting has not started")
 
 		// send vesting nft to investor
 		await vest.connect(cto).transferFrom(cto.address, investor.address, tokenId)
@@ -95,19 +95,19 @@ describe("Greeter", function ()
 		// console.log('transferred')
 
 		// check that investor cannot unvest tokens
-		await expect(vest.connect(investor).unvest(tokenId)).to.be.revertedWith("Vesting has not started")
+		await expect(vest.connect(investor)["unvest(uint256)"](tokenId)).to.be.revertedWith("Vesting has not started")
 
 		// skip time to start date
 		await ethers.provider.send("evm_setNextBlockTimestamp", [startDate])
 
 		// check that no tokens are available to unvest
-		await expect(vest.connect(investor).unvest(tokenId)).to.be.revertedWith("No tokens to unvest")
+		await expect(vest.connect(investor)["unvest(uint256)"](tokenId)).to.be.revertedWith("No tokens to unvest")
 
 		// skip 1 more day
 		await ethers.provider.send("evm_setNextBlockTimestamp", [startDate + 86400])
 
 		// unvest tokens by investor
-		let unvestTx = await vest.connect(investor).unvest(tokenId)
+		let unvestTx = await vest.connect(investor)["unvest(uint256)"](tokenId)
 		let unvestTxResult = await unvestTx.wait()
 
 		// check that investor has 1k tokens
@@ -116,7 +116,7 @@ describe("Greeter", function ()
 		// console.log('unvested')
 
 		// check that investor cannot unvest any more tokens
-		await expect(vest.connect(investor).unvest(tokenId)).to.be.revertedWith("No tokens to unvest")
+		await expect(vest.connect(investor)["unvest(uint256)"](tokenId)).to.be.revertedWith("No tokens to unvest")
 
 		// console.log('skipping')
 
@@ -126,7 +126,7 @@ describe("Greeter", function ()
 		// console.log('skipped')
 
 		// unvest rest of the tokens
-		unvestTx = await vest.connect(investor).unvest(tokenId)
+		unvestTx = await vest.connect(investor)["unvest(uint256)"](tokenId)
 		unvestTxResult = await unvestTx.wait()
 
 		// console.log('unvested rest')
@@ -135,7 +135,7 @@ describe("Greeter", function ()
 		expect(await mbase.balanceOf(investor.address)).to.equal(100_000)
 
 		// expect nft to be burned and not available to unvest
-		await expect(vest.connect(investor).unvest(tokenId)).to.be.revertedWith("ERC721: owner query for nonexistent token")
+		await expect(vest.connect(investor)["unvest(uint256)"](tokenId)).to.be.revertedWith("ERC721: owner query for nonexistent token")
 	})
 	it('should overflow on huge amounts of tokens up until full unvest', async () => {
 		const MarsbaseToken = await ethers.getContractFactory("MarsbaseToken")
@@ -168,7 +168,7 @@ describe("Greeter", function ()
 		let tokenId = vestTxResult.events?.[0]?.args?.tokenId
 
 		// try to unvest
-		await expect(vest.connect(cto).unvest(tokenId)).to.be.revertedWith("Vesting has not started")
+		await expect(vest.connect(cto)["unvest(uint256)"](tokenId)).to.be.revertedWith("Vesting has not started")
 
 		// expect CTO to have 0 tokens
 		expect(await mbase.balanceOf(cto.address)).to.equal(0)
@@ -177,13 +177,13 @@ describe("Greeter", function ()
 		await ethers.provider.send("evm_setNextBlockTimestamp", [startDate + 86400])
 
 		// expect unvesting to fail
-		await expect(vest.connect(cto).unvest(tokenId)).to.be.revertedWith(UINT_OVERFLOW_PANIC_MESSAGE)
+		await expect(vest.connect(cto)["unvest(uint256)"](tokenId)).to.be.revertedWith(UINT_OVERFLOW_PANIC_MESSAGE)
 
 		// skip time to end date
 		await ethers.provider.send("evm_setNextBlockTimestamp", [endDate])
 
 		// try to unvest
-		await (await vest.connect(cto).unvest(tokenId)).wait()
+		await (await vest.connect(cto)["unvest(uint256)"](tokenId)).wait()
 
 		// expect CTO token balance to be UINT256_MAX
 		expect(await mbase.balanceOf(cto.address)).to.equal(ethers.constants.MaxUint256)
@@ -404,5 +404,56 @@ describe("Greeter", function ()
 		await ethers.provider.send("evm_setNextBlockTimestamp", [startDate])
 
 		// TODO: test unvesting
+	})
+	it('should unvest multiple tokens', async () => {
+		const MarsbaseToken = await ethers.getContractFactory("MarsbaseToken")
+		const MarsbaseVesting = await ethers.getContractFactory("MarsbaseVesting")
+		const mbase = await MarsbaseToken.deploy()
+		await mbase.deployed()
+		const vest = await MarsbaseVesting.deploy(mbase.address)
+		await vest.deployed()
+
+		// set transfer fee to 1%
+		await vest.setFeeTransfer(0.01 * 1e5)
+
+		const [owner, cto] = await ethers.getSigners()
+
+		// mint 100k tokens to cto
+		await mbase.mint(cto.address, 100_000)
+
+		await mbase.connect(cto).approve(vest.address, 100_000)
+
+		let startDate = (await ethers.provider.getBlock("latest")).timestamp + 86400
+		let endDate = startDate + 86400 * 100
+		// create 100 vesting nfts in a loop
+		let tokenIds = []
+		for (let i = 0; i < 100; i++)
+		{
+			let vestTx = await vest.connect(cto)["vest(uint256,uint256,uint256)"](startDate, endDate, 1_000)
+			let result = await vestTx.wait()
+			let tokenId = result.events?.[0]?.args?.tokenId
+			tokenIds.push(tokenId)
+		}
+
+		// skip time to start date
+		await ethers.provider.send("evm_setNextBlockTimestamp", [startDate + (endDate - startDate) / 2])
+
+		// unvest nft
+		let unvestTx = await vest.connect(cto)["unvest(uint256[])"](tokenIds)
+		let unvestTxResult = await unvestTx.wait()
+
+		// expect cto to have 50k tokens
+		let ctoBalance = await mbase.balanceOf(cto.address)
+		expect(ctoBalance).to.equal(50_000)
+
+		// skip time to end date
+		await ethers.provider.send("evm_setNextBlockTimestamp", [endDate])
+
+		unvestTx = await vest.connect(cto)["unvest(uint256[])"](tokenIds)
+		unvestTxResult = await unvestTx.wait()
+
+		// expect cto to have 100k tokens
+		ctoBalance = await mbase.balanceOf(cto.address)
+		expect(ctoBalance).to.equal(100_000)
 	})
 })

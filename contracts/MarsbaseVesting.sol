@@ -214,6 +214,22 @@ contract MarsbaseVesting is ERC721Enumerable {
 
 		return amount;
 	}
+
+	// unvest function for multiple token ids
+	function unvest(uint256[] memory tokenIds) public returns (uint256) {
+		// get length of tokenIds array
+		uint256 length = tokenIds.length;
+
+		// loop over all tokenIds
+		uint256 total = 0;
+		for (uint256 i = 0; i < length; i++) {
+			// unvest tokenId
+			total += unvest(tokenIds[i]);
+		}
+		return total;
+	}
+
+
 	function split(uint256 tokenId, uint256 leftAmount, uint256 rightAmount) public returns (uint256) {
 		// console.log("splitting", tokenId, leftAmount, rightAmount);
 		// require tokenId to exist and be owned by msg.sender
