@@ -1,4 +1,25 @@
-# Advanced Sample Hardhat Project
+# Marsbase Tokens & Vesting
+
+## Contracts
+
+### `/contracts/MarsbaseToken.sol`
+
+Marsbase ERC20 token.
+
+### `/contracts/MarsbaseVesting.sol`
+
+Marsbase vesting NFT.
+
+## Guides
+
+### Test
+
+```shell
+yarn test
+```
+
+
+# Hardhat info
 
 This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
 
@@ -25,7 +46,7 @@ npx solhint 'contracts/**/*.sol'
 npx solhint 'contracts/**/*.sol' --fix
 ```
 
-# Etherscan verification
+## Etherscan verification
 
 To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
 
@@ -41,6 +62,6 @@ Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_
 npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
 ```
 
-# Performance optimizations
+## Performance optimizations
 
 For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
