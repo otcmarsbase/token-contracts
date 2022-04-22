@@ -62,6 +62,8 @@ jobs:
         run: rm -rf ./node_modules
       - name: Cleanup boilerplate
         run: rm -rf .env.example .eslintignore .eslintrc.js .npmignore .prettierignore .prettierrc .solhint.json .solhintignore
+      - name: Cleanup git & GH
+        run: rm -rf ./.git ./.github
         
       - name: list all files
         run: ls -la
