@@ -83,7 +83,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 	}
 
 	// function to calculate the fee for a given amount and return both fee and rest amount
-	function calculateFee(uint256 amount, uint256 _fee) public view returns (uint256 fee, uint256 rest) {
+	function calculateFee(uint256 amount, uint256 _fee) public pure returns (uint256 fee, uint256 rest) {
 		fee = amount * _fee / 1e5;
 		rest = amount - fee;
 		return (fee, rest);
@@ -171,7 +171,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 		// get tokenId vesting data
 		VestingRecord memory vesting = _vestings[tokenId];
 
-		console.log("current vesting value", vesting.start, vesting.end, vesting.amount);
+		// console.log("current vesting value", vesting.start, vesting.end, vesting.amount);
 
 		// get current timestamp
 		uint256 timestamp = block.timestamp;
