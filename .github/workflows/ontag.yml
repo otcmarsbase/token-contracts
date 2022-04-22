@@ -55,7 +55,7 @@ jobs:
       - name: Cleanup build cache
         run: rm -rf ./cache
       - name: Cleanup source code
-        run: rm -rf ./contracts ./migrations ./test ./scripts ./truffle-config.js ./hardhat.config.js ./.gitignore
+        run: rm -rf ./contracts ./migrations ./test ./scripts ./hardhat.config.ts ./.gitignore
       - name: Cleanup secrets
         run: rm -rf ./.secret ./.infuraid ./.etherscan
       - name: Cleanup node_modules
