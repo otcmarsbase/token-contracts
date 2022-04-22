@@ -64,22 +64,19 @@ jobs:
         run: rm -rf .env.example .eslintignore .eslintrc.js .npmignore .prettierignore .prettierrc .solhint.json .solhintignore
       - name: Cleanup git & GH
         run: rm -rf ./.git ./.github
-        
-      - name: list all files
-        run: ls -la
 
-      # - name: NPM Publish
-      #   uses: JS-DevTools/npm-publish@v1
-      #   with:
-      #     token: ${{ env.MB_NPM_TOKEN }}
-      #     access: public
+      - name: NPM Publish
+        uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ env.MB_NPM_TOKEN }}
+          access: public
 
-      # - name: Telegram Notify
-      #   uses: appleboy/telegram-action@v0.1.1
-      #   with:
-      #     to: ${{ env.TG_CHAT_ID }}
-      #     token: ${{ env.MB_TELEGRAM_BOT_TOKEN }}
-      #     format: markdown
-      #     message: |
-      #       @otcmarsbase/token-contract-types@${{ env.VERSION }} deployed
-      #       https://www.npmjs.com/package/@otcmarsbase/token-contract-types/v/${{ env.VERSION }}
+      - name: Telegram Notify
+        uses: appleboy/telegram-action@v0.1.1
+        with:
+          to: ${{ env.TG_CHAT_ID }}
+          token: ${{ env.MB_TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            @otcmarsbase/token-contract-types@${{ env.VERSION }} deployed
+            https://www.npmjs.com/package/@otcmarsbase/token-contract-types/v/${{ env.VERSION }}
