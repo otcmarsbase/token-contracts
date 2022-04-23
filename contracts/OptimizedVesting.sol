@@ -5,35 +5,16 @@ import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract MarsbaseVestingOld is ERC721Enumerable {
+contract MarsbaseVesting is ERC721Enumerable, Ownable {
     // address of the ERC20 token that will be vested
-    address private _tokenAddress;
-
-	// contract owner
-	address private _owner;
-	
-	// change owner setter
-	modifier onlyOwner {
-		require(msg.sender == _owner, "Only owner");
-		_;
-	}
-
-	// owner getter
-	function getOwner() public view returns(address) {
-		return _owner;
-	}
-	// owner setter
-	function setOwner(address newOwner) public onlyOwner {
-		_owner = newOwner;
-	}
-
+    address public _tokenAddress;
 
     // add constructor param with token address
     constructor(address tokenAddress) ERC721("OTC Marsbase Token", "MBASE") {
         _tokenAddress = tokenAddress;
-		_owner = msg.sender;
     }
 
 	// split event description
@@ -56,27 +37,19 @@ contract MarsbaseVestingOld is ERC721Enumerable {
     }
 
     // Mapping from token ID to vesting data
-    mapping(uint256 => VestingRecord) private _vestings;
+    mapping(uint256 => VestingRecord) public _vestings;
 
 	// splitting fee variable (multiplied by 1e5 to achieve 5 digits precision)
-	uint256 private _feeSplit = 0;
+	uint256 public _feeSplit;
 
-	// fee getter
-	function getFeeSplit() public view returns (uint256) {
-		return _feeSplit;
-	}
 	// fee setter for owner only
 	function setFeeSplit(uint256 newFee) public onlyOwner {
 		_feeSplit = newFee;
 	}
 
 	// transfer fee variable (multiplied by 1e5 to achieve 5 digits precision)
-	uint256 private _feeTransfer = 0;
+	uint256 public _feeTransfer;
 
-	// fee getter
-	function getFeeTransfer() public view returns (uint256) {
-		return _feeTransfer;
-	}
 	// fee setter for owner only
 	function setFeeTransfer(uint256 newFee) public onlyOwner {
 		_feeTransfer = newFee;
@@ -127,25 +100,32 @@ contract MarsbaseVestingOld is ERC721Enumerable {
     ) public returns (uint256) {
 		// console.log("vesting", start, end, amount);
         // require enough ERC20 allowance on token with address _tokenAddress
-        require(
-            IERC20(_tokenAddress).allowance(msg.sender, address(this)) >= amount,
-            "not enough tokens"
-        );
+        // require(
+        //     IERC20(_tokenAddress).allowance(msg.sender, address(this)) >= amount,
+        //     "not enough tokens"
+        // );
 
         // mint token with new id
-        uint256 tokenId = this.totalSupply();
+        uint256 tokenId = totalSupply();
         _mint(receiver, tokenId);
 
         // transfer erc20 tokens from msg.sender to this contract address based on amount param
         IERC20(_tokenAddress).transferFrom(msg.sender, address(this), amount);
 
-		uint256 timestamp = block.timestamp;
+		// uint256 timestamp = block.timestamp;
 		// require start&end dates to not be more than 100 years into the future
-		require(start <= timestamp + 100 * 365 * 86400, "start date is too far");
-		require(end <= timestamp + 100 * 365 * 86400, "end date is too far");
+		require(start <= block.timestamp + 100 * 365 * 86400, "start date is too far");
+		require(end <= block.timestamp + 100 * 365 * 86400, "end date is too far");
 
         // add vesting data to _vestings
-        _vestings[tokenId] = VestingRecord(start, end, amount, amount);
+        // _vestings[tokenId] = VestingRecord(start, end, amount, amount);
+
+        _vestings[tokenId].start = start;
+        _vestings[tokenId].end = end;
+        _vestings[tokenId].amount = amount;
+        _vestings[tokenId].initialAmount = amount;
+
+
 
         // require(!_vestings[tokenId].start, "Token is already wrapped");
         // _vestings[tokenId].start = block.timestamp;
@@ -166,7 +146,7 @@ contract MarsbaseVestingOld is ERC721Enumerable {
 	function unvest(uint256 tokenId) public returns (uint256) {
 		// console.log("unvesting", tokenId);
 		// require tokenId to exist and be owned by msg.sender
-		require(this.ownerOf(tokenId) == msg.sender, "Token is not owned by you");
+		require(ownerOf(tokenId) == msg.sender, "Token is not owned by you");
 
 		// get tokenId vesting data
 		VestingRecord memory vesting = _vestings[tokenId];
@@ -233,7 +213,7 @@ contract MarsbaseVestingOld is ERC721Enumerable {
 	function split(uint256 tokenId, uint256 leftAmount, uint256 rightAmount) public returns (uint256) {
 		// console.log("splitting", tokenId, leftAmount, rightAmount);
 		// require tokenId to exist and be owned by msg.sender
-		require(this.ownerOf(tokenId) == msg.sender, "Token is not owned by you");
+		require(ownerOf(tokenId) == msg.sender, "Token is not owned by you");
 
 		// get tokenId vesting data
 		VestingRecord memory vesting = _vestings[tokenId];
@@ -246,7 +226,7 @@ contract MarsbaseVestingOld is ERC721Enumerable {
 		require(vesting.amount == leftAmount + rightAmount, "Amounts do not add up");
 
 		// calculate fee and rest amount
-		uint256 fee = 0;
+		uint256 fee;
 		if (_feeSplit > 0)
 		{
 			(fee,) = calculateFee(vesting.amount, _feeSplit);
@@ -259,11 +239,17 @@ contract MarsbaseVestingOld is ERC721Enumerable {
 		}
 
 		// create new nft
-		uint256 newTokenId = this.totalSupply();
+		uint256 newTokenId = totalSupply();
 		_mint(msg.sender, newTokenId);
 
 		// set new tokenId vesting data
-		_vestings[newTokenId] = VestingRecord(vesting.start, vesting.end, rightAmount, rightAmount);
+		// _vestings[newTokenId] = VestingRecord(vesting.start, vesting.end, rightAmount, rightAmount);
+
+        _vestings[newTokenId].start = vesting.start;
+        _vestings[newTokenId].end = vesting.end;
+        _vestings[newTokenId].amount = rightAmount;
+        _vestings[newTokenId].initialAmount = rightAmount;
+
 
 		// update old nft with left amount
 		_vestings[tokenId].amount = leftAmount;
