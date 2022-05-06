@@ -9,10 +9,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract MarsbaseVesting is ERC721Enumerable {
     // address of the ERC20 token that will be vested
-    address private _tokenAddress;
+    address internal _tokenAddress;
 
 	// contract owner
-	address private _owner;
+	address internal _owner;
 	
 	// change owner setter
 	modifier onlyOwner {
@@ -31,7 +31,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 
 
     // add constructor param with token address
-    constructor(address tokenAddress) ERC721("OTC Marsbase Token", "MBASE") {
+    constructor(address tokenAddress) ERC721("OTC Marsbase Vested Token", "vMBASE") {
         _tokenAddress = tokenAddress;
 		_owner = msg.sender;
     }
@@ -53,10 +53,11 @@ contract MarsbaseVesting is ERC721Enumerable {
         uint256 end;
         uint256 amount;
 		uint256 initialAmount;
+		uint256 initialStart;
     }
 
     // Mapping from token ID to vesting data
-    mapping(uint256 => VestingRecord) private _vestings;
+    mapping(uint256 => VestingRecord) internal _vestings;
 
 	// splitting fee variable (multiplied by 1e5 to achieve 5 digits precision)
 	uint256 private _feeSplit = 0;
@@ -99,6 +100,10 @@ contract MarsbaseVesting is ERC721Enumerable {
 		super._transfer(_from, _to, _tokenId);
 		// return if fee is zero
 		if (_feeTransfer == 0) {
+			return;
+		}
+		// return if transferring to/from contract
+		if (_to == address(this) || _from == address(this)) {
 			return;
 		}
 		// calculate transfer fee
@@ -145,7 +150,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 		require(end <= timestamp + 100 * 365 * 86400, "end date is too far");
 
         // add vesting data to _vestings
-        _vestings[tokenId] = VestingRecord(start, end, amount, amount);
+        _vestings[tokenId] = VestingRecord(start, end, amount, amount, start);
 
         // require(!_vestings[tokenId].start, "Token is already wrapped");
         // _vestings[tokenId].start = block.timestamp;
@@ -163,30 +168,42 @@ contract MarsbaseVesting is ERC721Enumerable {
 		return amount * timePassed / duration;
 	}
 
-	function unvest(uint256 tokenId) public returns (uint256) {
+	function unvest(uint256 tokenId) public virtual returns (uint256) {
 		// console.log("unvesting", tokenId);
 		// require tokenId to exist and be owned by msg.sender
 		require(this.ownerOf(tokenId) == msg.sender, "Token is not owned by you");
 
+		// get current timestamp
+		uint256 timestamp = block.timestamp;
+
+		return _unvest(tokenId, msg.sender, timestamp);
+	}
+	function calculateUnvestAmount(uint256 vestingStart, uint256 vestingEnd, uint256 vestingAmount, uint256 timestamp) public pure returns (uint256) {
+		// calculate vesting duration
+		uint256 duration = vestingEnd - vestingStart;
+
+		// calculate time passed since vesting start based on current timestamp
+		uint256 timePassed = timestamp - vestingStart;
+
+		// calculate amount of tokens to be transferred back to msg.sender
+		uint256 amount = safeLerp(timePassed, vestingAmount, duration);
+		return amount;
+	}
+	
+	function _unvest(uint256 tokenId, address beneficiary, uint256 timestamp) internal returns (uint256) {
 		// get tokenId vesting data
 		VestingRecord memory vesting = _vestings[tokenId];
 
-		// console.log("current vesting value", vesting.start, vesting.end, vesting.amount);
+		// require vesting amount to be gt 0
+		require(vesting.amount > 0, "Token is not vested");
 
-		// get current timestamp
-		uint256 timestamp = block.timestamp;
+		// console.log("current vesting value", vesting.start, vesting.end, vesting.amount);
 
 		// require vesting to have started based on current timestamp
 		require(vesting.start <= timestamp, "Vesting has not started");
 
-		// calculate vesting duration
-		uint256 duration = vesting.end - vesting.start;
-
-		// calculate time passed since vesting start based on current timestamp
-		uint256 timePassed = timestamp - vesting.start;
-
 		// calculate amount of tokens to be transferred back to msg.sender
-		uint256 amount = safeLerp(timePassed, vesting.amount, duration);
+		uint256 amount = calculateUnvestAmount(vesting.start, vesting.end, vesting.amount, timestamp);
 
 		// require amount to be greater than 0
 		require(amount > 0, "No tokens to unvest");
@@ -210,7 +227,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 		}
 		
 		// transfer tokens back to msg.sender
-		IERC20(_tokenAddress).transfer(msg.sender, amount);
+		IERC20(_tokenAddress).transfer(beneficiary, amount);
 
 		return amount;
 	}
@@ -263,7 +280,7 @@ contract MarsbaseVesting is ERC721Enumerable {
 		_mint(msg.sender, newTokenId);
 
 		// set new tokenId vesting data
-		_vestings[newTokenId] = VestingRecord(vesting.start, vesting.end, rightAmount, rightAmount);
+		_vestings[newTokenId] = VestingRecord(vesting.start, vesting.end, rightAmount, rightAmount, vesting.start);
 
 		// update old nft with left amount
 		_vestings[tokenId].amount = leftAmount;
