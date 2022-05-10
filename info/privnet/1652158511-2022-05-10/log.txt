@@ -1,0 +1,6 @@
+Deploying contracts with the account: 0x60c56553495612d4b93b6BC1deffE937223eaF51
+Account balance: 2378386157049739776
+Marsbase Token deployed to: 0x89208773670B9D804b8B3adE7eec2DdDBd7C5d78
+Account balance: 2376280779494506611
+Marsbase Vesting deployed to: 0x414317e89FaAf5bB35cc67979A3E63797F7ecEee
+Account balance: 2373510935274899211

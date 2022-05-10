@@ -1,0 +1,2 @@
+Deploying contracts with the account: 0x60c56553495612d4b93b6BC1deffE937223eaF51
+Account balance: 89193078524869984
