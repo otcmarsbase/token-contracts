@@ -1,4 +1,5 @@
 import { expect } from "chai"
+import { BigNumberish } from "ethers"
 import { ethers } from "hardhat"
 
 describe("Frontend-specific tests", () =>
@@ -39,7 +40,7 @@ describe("Frontend-specific tests", () =>
 		expect (ctoTokenIds[0]).to.equal(vid1)
 		expect (ctoTokenIds[1]).to.equal(vid2)
 		expect (ctoTokenIds[2]).to.equal(vid3)
-		let records = await Promise.all(ctoTokenIds.map(x => vest.getVestingRecord(x)))
+		let records = await Promise.all(ctoTokenIds.map((x: BigNumberish) => vest.getVestingRecord(x)))
 		expect(records.length).to.equal(3)
 		expect(records[0].amount).to.equal(1)
 		expect(records[1].amount).to.equal(2)
@@ -58,7 +59,7 @@ describe("Frontend-specific tests", () =>
 		expect(ctoTokenIds2.length).to.equal(2)
 		expect (ctoTokenIds2[0]).to.equal(vid2)
 		expect (ctoTokenIds2[1]).to.equal(vid3)
-		let records2 = await Promise.all(ctoTokenIds2.map(x => vest.getVestingRecord(x)))
+		let records2 = await Promise.all(ctoTokenIds2.map((x: BigNumberish) => vest.getVestingRecord(x)))
 		expect(records2.length).to.equal(2)
 		expect(records2[0].amount).to.equal(2)
 		expect(records2[1].amount).to.equal(3)
@@ -67,7 +68,7 @@ describe("Frontend-specific tests", () =>
 		let investorTokenIds2 = await vest.getVestingsByOwner(investor.address)
 		expect(investorTokenIds2.length).to.equal(1)
 		expect(investorTokenIds2[0]).to.equal(vid1)
-		let records3 = await Promise.all(investorTokenIds2.map(x => vest.getVestingRecord(x)))
+		let records3 = await Promise.all(investorTokenIds2.map((x: BigNumberish) => vest.getVestingRecord(x)))
 		expect(records3.length).to.equal(1)
 		expect(records3[0].amount).to.equal(1)
 	})
