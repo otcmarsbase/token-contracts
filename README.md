@@ -18,6 +18,26 @@ Marsbase vesting NFT.
 yarn test
 ```
 
+### Deploy
+
+```shell
+yarn deploy-all --network privnet
+```
+(change `privnet` to `rinkeby`)
+
+Deployer is passed to the script through `PRIVATE_KEY` env variable.
+
+Logs will be saved to `/info/<network>/<time>` directory.
+
+Marsbase Token and Vesting NFT addresses are saved in `token.address` and `vesting.address` respectfully.
+
+### Verify contract code on Etherscan
+
+`/scripts/verify/rinkeby-token.sh`
+`/scripts/verify/rinkeby-vesting.sh`
+
+(only rinkeby for now)
+
 
 # Hardhat info
 
