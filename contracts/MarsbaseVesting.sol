@@ -94,6 +94,21 @@ contract MarsbaseVesting is ERC721Enumerable {
 	function getVestingRecord(uint256 tokenId) public view returns (VestingRecord memory) {
 		return _vestings[tokenId];
 	}
+	function getVestingsByOwner(address owner) public view returns (uint256[] memory) {
+		// get amount of tokens for the owner
+		uint256 tokensCount = balanceOf(owner);
+		uint256[] memory result = new uint256[](tokensCount);
+		uint256 i = 0;
+		uint256 vestingsCount = totalSupply();
+		for (uint256 tokenId = 0; tokenId < vestingsCount; tokenId++)
+		{
+			if (ownerOf(tokenId) == owner)
+			{
+				result[i++] = tokenId;
+			}
+		}
+		return result;
+	}
 
 	function _transfer(address _from, address _to, uint256 _tokenId) internal override {
 		// call parent transfer function
