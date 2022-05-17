@@ -1,0 +1,148 @@
+{
+    "cells": [
+        {
+            "language": "markdown",
+            "source": [
+                "# Privnet send ETH\n\nSending ETH on privnet to other accounts."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet amountInEth = \"1.0\""
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// load environment variables\n(function(){\n\tconst dotenv = require(\"dotenv\") as typeof import(\"dotenv\")\n\tlet { parsed } = dotenv.config({\n\t\tpath: \"../.env\"\n\t})\n\tconsole.log(Object.keys(parsed).sort().join(', '))\n})()"
+            ],
+            "outputs": [
+                {
+                    "items": [
+                        {
+                            "mime": "application/vnd.code.notebook.stdout",
+                            "value": [
+                                "ETHERSCAN_API_KEY, PRIVATE_KEY, PRIVNET_URL, RINKEBY_URL",
+                                ""
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// import dependencies\nconst axios = (require(\"axios\") as typeof import(\"axios\")).default\nconst ethers = (require(\"ethers\") as typeof import(\"ethers\")).ethers"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "const RPC_URL = process.env.PRIVNET_URL || \"\"\n\nRPC_URL"
+            ],
+            "outputs": [
+                {
+                    "items": [
+                        {
+                            "mime": "text/plain",
+                            "value": [
+                                "\u001b[32m'http://142.93.160.132:8110'\u001b[39m"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// eth rpc stuff\n\nlet RPC_ID = 1\n\nasync function callRpc(method: string, params: any[])\n{\n\tlet result = await axios.post(RPC_URL, {\n\t\tjsonrpc: \"2.0\",\n\t\tid: RPC_ID++,\n\t\tmethod,\n\t\tparams,\n\t})\n\t// console.log(result.data)\n\treturn result.data.result\n}\nasync function getBalance(address: string)\n{\n\treturn callRpc(\"eth_getBalance\", [address, \"latest\"])\n}\nfunction toEth(wei: string)\n{\n\treturn ethers.utils.formatEther(wei)\n}\nasync function sendEth(from: string, to: string, value: string)\n{\n\tlet tx = {\n\t\tfrom,\n\t\tto,\n\t\tvalue\n\t}\n\t// console.log(tx)\n\treturn callRpc(\"eth_sendTransaction\", [tx])\n}"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// get balance of current account\nconsole.log(`Balance of ${receiver}:\\n${toEth(await getBalance(receiver))} ETH`)"
+            ],
+            "outputs": [
+                {
+                    "items": [
+                        {
+                            "mime": "application/vnd.code.notebook.stdout",
+                            "value": [
+                                "Balance of 0x60c56553495612d4b93b6BC1deffE937223eaF51:",
+                                "4.368987546425688374 ETH",
+                                ""
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let [sender] = await callRpc(\"eth_accounts\", [])\nconsole.log(`Balance of ${sender}:\\n${toEth(await getBalance(sender))} ETH`)"
+            ],
+            "outputs": [
+                {
+                    "items": [
+                        {
+                            "mime": "application/vnd.code.notebook.stdout",
+                            "value": [
+                                "Balance of 0x8fd58fc34538603458a93b1923256e7b066e4478:",
+                                "115792089237316195423570985008687907853269984665640564039453.205565152891379552 ETH",
+                                ""
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "console.log(`sending ${amountInEth} ETH from ${sender} to ${receiver}`)\nlet result = await sendEth(sender, receiver, ethers.utils.hexValue(ethers.utils.parseEther(amountInEth)))"
+            ],
+            "outputs": [
+                {
+                    "items": [
+                        {
+                            "mime": "application/vnd.code.notebook.stdout",
+                            "value": [
+                                "sending 1.0 ETH from 0x8fd58fc34538603458a93b1923256e7b066e4478 to 0x60c56553495612d4b93b6BC1deffE937223eaF51",
+                                ""
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// get balance of current account again\nconsole.log(`Balance of ${receiver}:\\n${toEth(await getBalance(receiver))} ETH`)"
+            ],
+            "outputs": [
+                {
+                    "items": [
+                        {
+                            "mime": "application/vnd.code.notebook.stdout",
+                            "value": [
+                                "Balance of 0x60c56553495612d4b93b6BC1deffE937223eaF51:",
+                                "5.368987546425688374 ETH",
+                                ""
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
