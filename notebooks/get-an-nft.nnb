@@ -10,7 +10,7 @@
         {
             "language": "typescript",
             "source": [
-                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet mbaseAmount = 100_000_000\nlet startDate = Date.now()\nlet endDate = startDate + 86400 * 30"
+                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet mbaseAmount = 100_000_000\nlet startDate = Math.floor(Date.now() / 1000)\nlet endDate = Math.floor(startDate + 86400 * 30)"
             ],
             "outputs": []
         },
@@ -87,7 +87,7 @@
         {
             "language": "typescript",
             "source": [
-                "\nlet smbase = mbase.connect(signer)\nlet txPromise = smbase.populateTransaction.mint(signer.address, mbaseAmount)\nlet tx = await txPromise\ntx.chainId = chainId\ntx.nonce = nonce\ntx.value = ethers.utils.hexlify(0)\n\ntx.gasLimit = ethers.utils.hexlify(Math.floor(gas * 1.5))\n\n// eip-1559 gas stuff\n// tx.type = 2 // eip-1559 transaction\n// tx.maxPriorityFeePerGas = recommendedMaxPriorityFeePerGas\n// tx.maxFeePerGas = maxFeePerGas\ntx.gasPrice = 3361749838\n\nconsole.log(tx)"
+                "\nlet smbase = mbase.connect(signer)\nlet txPromise = smbase.populateTransaction.mint(signer.address, mbaseAmount)\nlet tx = await txPromise\ntx.chainId = chainId\ntx.nonce = nonce\ntx.value = ethers.utils.hexlify(0)\n\ntx.gasLimit = ethers.utils.hexlify(Math.floor(gas * 1.5))\n\n// eip-1559 gas stuff\ntx.type = 2 // eip-1559 transaction\ntx.maxPriorityFeePerGas = recommendedMaxPriorityFeePerGas\ntx.maxFeePerGas = maxFeePerGas\n// tx.gasPrice = 3361749838\n\nconsole.log(tx)"
             ],
             "outputs": []
         },
@@ -108,7 +108,70 @@
         {
             "language": "typescript",
             "source": [
-                "\nconsole.log(await sentTx.wait())"
+                "let balance = await smbase.balanceOf(signer.address)\nconsole.log(balance)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "function populateTx(tx: any, chainId: number, nonce: number, gasLimit: number, maxPriorityFeePerGas: string, maxFeePerGas: string)\n{\n\ttx.chainId = chainId\n\ttx.nonce = nonce\n\ttx.value = ethers.utils.hexlify(0)\n\n\ttx.gasLimit = ethers.utils.hexlify(Math.floor(gasLimit * 1.5))\n\n\t// eip-1559 gas stuff\n\ttx.type = 2 // eip-1559 transaction\n\ttx.maxPriorityFeePerGas = maxPriorityFeePerGas\n\ttx.maxFeePerGas = maxFeePerGas\n}"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let approveTx = await smbase.populateTransaction.approve(vest.address, mbaseAmount)\nlet approveGas = await smbase.estimateGas.approve(vest.address, mbaseAmount)\nlet approveNonce = await provider.getTransactionCount(signer.address)\npopulateTx(approveTx, chainId, approveNonce, approveGas, recommendedMaxPriorityFeePerGas, maxFeePerGas)\nconsole.log(approveTx)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let approveTxSigned = await signer.signTransaction(approveTx)\nconsole.log(approveTxSigned)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "console.log(`approve hash: ${await callRpc(\"eth_sendRawTransaction\", [approveTxSigned])}`)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// mint vesting nfts on vest contract\nconsole.log(`minting ${mbaseAmount} vesting NFTs for ${receiver} from ${startDate} to ${endDate}`)\n\nlet svest = vest.connect(signer)\nlet vestGas = await svest.estimateGas[\"vest(uint256,uint256,uint256,address)\"](startDate, endDate, mbaseAmount, receiver)\nconsole.log(`vestGas: ${vestGas}`)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let vestTx = await svest.populateTransaction[\"vest(uint256,uint256,uint256,address)\"](startDate, endDate, mbaseAmount, receiver)\nconsole.log(vestTx)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let vestNonce = await provider.getTransactionCount(signer.address)\npopulateTx(vestTx, chainId, vestNonce, vestGas, recommendedMaxPriorityFeePerGas, maxFeePerGas)\nconsole.log(vestTx)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let vestTxSigned = await signer.signTransaction(vestTx)\nconsole.log(vestTxSigned)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "console.log(`vest hash: ${await callRpc(\"eth_sendRawTransaction\", [vestTxSigned])}`)"
             ],
             "outputs": []
         },
@@ -116,13 +179,6 @@
             "language": "typescript",
             "source": [
                 "await callRpc(\"txpool_content\", [])"
-            ],
-            "outputs": []
-        },
-        {
-            "language": "typescript",
-            "source": [
-                "await callRpc(\"evm_mine\", [])"
             ],
             "outputs": []
         },
