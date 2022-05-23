@@ -1,0 +1,137 @@
+{
+    "cells": [
+        {
+            "language": "markdown",
+            "source": [
+                "# Privnet get NFT\n\nGet a vesting NFT on privnet with params."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet mbaseAmount = 100_000_000\nlet startDate = Date.now()\nlet endDate = startDate + 86400 * 30"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// load environment variables\n(function(){\n\tconst dotenv = require(\"dotenv\") as typeof import(\"dotenv\")\n\tlet { parsed } = dotenv.config({\n\t\tpath: \"../.env\"\n\t})\n\tconsole.log(Object.keys(parsed).sort().join(', '))\n})()"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// import dependencies\nconst axios = (require(\"axios\") as typeof import(\"axios\")).default\nconst { ethers: ethershh } = require(\"hardhat\") as typeof import(\"hardhat\")\n// import ethers from \"ethers\"\n// export { axios, ethers }\nconst ethers = require(\"ethers\") as typeof import(\"ethers\")"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "const RPC_URL = process.env.PRIVNET_URL || \"\"\nconst NETWORK_NAME = \"privnet\"\n\nconsole.log(RPC_URL)\nconsole.log(NETWORK_NAME)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// eth rpc stuff\n\nlet RPC_ID = 1\n\nasync function callRpc(method: string, params: any[])\n{\n\tlet result = await axios.post(RPC_URL, {\n\t\tjsonrpc: \"2.0\",\n\t\tid: RPC_ID++,\n\t\tmethod,\n\t\tparams,\n\t})\n\t// console.log(result.data)\n\tif (result.data.error)\n\t\tthrow result.data.error\n\treturn result.data.result\n}\nasync function getBalance(address: string)\n{\n\treturn callRpc(\"eth_getBalance\", [address, \"latest\"])\n}\nfunction toEth(wei: string)\n{\n\treturn ethers.utils.formatEther(wei)\n}\nasync function sendEth(from: string, to: string, value: string)\n{\n\tlet tx = {\n\t\tfrom,\n\t\tto,\n\t\tvalue\n\t}\n\t// console.log(tx)\n\treturn callRpc(\"eth_sendTransaction\", [tx])\n}"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "import fs from \"fs\"\nimport path from \"path\"\n\nconst readLatestValueFromFile = (key: string) => fs.readFileSync(path.resolve(`../info/${NETWORK_NAME}/latest/${key}`), \"utf8\").trim()\n\nconst deployer = readLatestValueFromFile(`deployer.address`)\nconsole.log(`deployer: ${deployer}`)\n\nconst provider = new ethers.providers.JsonRpcProvider(RPC_URL)\n\nconst signer = new ethers.Wallet(process.env.PRIVATE_KEY || \"\", provider)\nconsole.log(`signer: ${signer.address}`)\n\nif (signer.address != deployer)\n\tconsole.log(`signer mismatch! deployer: ${deployer}, signer: ${signer.address}`)\n\nconst { chainId } = await provider.getNetwork()\nconsole.log(`chain id: ${chainId}`)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "const MarsbaseToken = await ethershh.getContractFactory(\"MarsbaseToken\")\nconst MarsbaseVesting = await ethershh.getContractFactory(\"MarsbaseVesting\")\n\nconst mbase = MarsbaseToken.attach(readLatestValueFromFile(`token.address`))\nconst vest = MarsbaseVesting.attach(readLatestValueFromFile(`vesting.address`))\n\nconsole.log(`MBASE token: ${mbase.address}`)\nconsole.log(`vesting: ${vest.address}`)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// mint mbase tokens for the sender\nconsole.log(`minting ${mbaseAmount} MBASE tokens for ${signer.address}`)\n\nlet gas = await mbase.connect(signer).estimateGas.mint(signer.address, mbaseAmount)\nconsole.log(`gas: ${gas}`)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let nonce = await provider.getTransactionCount(signer.address)\nconsole.log(nonce)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// get gas price https://docs.alchemy.com/alchemy/guides/eip-1559/send-tx-eip-1559\n\nlet recommendedMaxPriorityFeePerGas = await callRpc(\"eth_maxPriorityFeePerGas\", [])\nlet lastBlock = await callRpc(\"eth_getBlockByNumber\", [\"pending\", false])\nlet { baseFeePerGas } = lastBlock\n\n// log gas prices\nconsole.log(`baseFeePerGas: ${baseFeePerGas}`)\nconsole.log(`recommendedMaxPriorityFeePerGas: ${recommendedMaxPriorityFeePerGas}`)\n\n// parse gas prices as BigNumbers, add them and format as hex\n// console.log(ethers?.utils)\nlet bfgBN = ethers.BigNumber.from(baseFeePerGas)\n// console.log(`bfgBN: ${bfgBN}`)\nlet rmpfpgBN = ethers.BigNumber.from(recommendedMaxPriorityFeePerGas)\n// console.log(`rmpfpgBN: ${rmpfpgBN}`)\nlet maxFeePerGas = bfgBN.add(rmpfpgBN).toHexString()\nconsole.log(`maxFeePerGas: ${maxFeePerGas}`)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "console.log(await provider.getFeeData())"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "\nlet smbase = mbase.connect(signer)\nlet txPromise = smbase.populateTransaction.mint(signer.address, mbaseAmount)\nlet tx = await txPromise\ntx.chainId = chainId\ntx.nonce = nonce + 1\ntx.value = ethers.utils.hexlify(0)\n\ntx.gasLimit = ethers.utils.hexlify(Math.floor(gas * 1.5))\n\n// eip-1559 gas stuff\n// tx.type = 2 // eip-1559 transaction\n// tx.maxPriorityFeePerGas = recommendedMaxPriorityFeePerGas\n// tx.maxFeePerGas = maxFeePerGas\ntx.gasPrice = 3361749838\n\nconsole.log(tx)"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let signedTx\ntry\n{\n\tsignedTx = await signer.signTransaction(tx)\n\tconsole.log(signedTx)\n}\ncatch (e)\n{\n\tconsole.error(e)\n}"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let sentTx\ntry\n{\n\tlet hash = await callRpc(\"eth_sendRawTransaction\", [signedTx])\n\tconsole.log(hash)\n\t// sentTx = await provider.sendTransaction(signedTx)\n\t// console.log(sentTx)\n}\ncatch (e)\n{\n\tlet name = e instanceof Error ? e.name : \"\"\n\tconsole.error(name)\n\tlet message = e instanceof Error ? e.message : \"\"\n\tconsole.error(message)\n\tconsole.error(e)\n}"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "\nconsole.log(await sentTx.wait())"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "await callRpc(\"txpool_content\", [])"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "await callRpc(\"evm_mine\", [])"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "let pendingBlock = await callRpc(\"eth_getBlockByNumber\", [\"pending\", false])\nconsole.log(pendingBlock)"
+            ],
+            "outputs": []
+        }
+    ]
+}
