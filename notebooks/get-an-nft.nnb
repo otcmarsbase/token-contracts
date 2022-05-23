@@ -87,7 +87,7 @@
         {
             "language": "typescript",
             "source": [
-                "\nlet smbase = mbase.connect(signer)\nlet txPromise = smbase.populateTransaction.mint(signer.address, mbaseAmount)\nlet tx = await txPromise\ntx.chainId = chainId\ntx.nonce = nonce + 1\ntx.value = ethers.utils.hexlify(0)\n\ntx.gasLimit = ethers.utils.hexlify(Math.floor(gas * 1.5))\n\n// eip-1559 gas stuff\n// tx.type = 2 // eip-1559 transaction\n// tx.maxPriorityFeePerGas = recommendedMaxPriorityFeePerGas\n// tx.maxFeePerGas = maxFeePerGas\ntx.gasPrice = 3361749838\n\nconsole.log(tx)"
+                "\nlet smbase = mbase.connect(signer)\nlet txPromise = smbase.populateTransaction.mint(signer.address, mbaseAmount)\nlet tx = await txPromise\ntx.chainId = chainId\ntx.nonce = nonce\ntx.value = ethers.utils.hexlify(0)\n\ntx.gasLimit = ethers.utils.hexlify(Math.floor(gas * 1.5))\n\n// eip-1559 gas stuff\n// tx.type = 2 // eip-1559 transaction\n// tx.maxPriorityFeePerGas = recommendedMaxPriorityFeePerGas\n// tx.maxFeePerGas = maxFeePerGas\ntx.gasPrice = 3361749838\n\nconsole.log(tx)"
             ],
             "outputs": []
         },
