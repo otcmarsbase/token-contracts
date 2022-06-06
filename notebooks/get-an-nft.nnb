@@ -10,14 +10,14 @@
         {
             "language": "typescript",
             "source": [
-                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet mbaseAmount = 100_000_000\nlet startDate = Math.floor(Date.now() / 1000)\nlet endDate = Math.floor(startDate + 86400 * 30)"
+                "// load environment variables\n(function(){\n\tconst dotenv = require(\"dotenv\") as typeof import(\"dotenv\")\n\tlet { parsed } = dotenv.config({\n\t\tpath: \"../.env\"\n\t})\n\tconsole.log(Object.keys(parsed).sort().join(', '))\n})()"
             ],
             "outputs": []
         },
         {
             "language": "typescript",
             "source": [
-                "// load environment variables\n(function(){\n\tconst dotenv = require(\"dotenv\") as typeof import(\"dotenv\")\n\tlet { parsed } = dotenv.config({\n\t\tpath: \"../.env\"\n\t})\n\tconsole.log(Object.keys(parsed).sort().join(', '))\n})()"
+                "const RPC_URL = process.env.PRIVNET_URL || \"\"\nconst NETWORK_NAME = \"privnet\"\n\nconsole.log(RPC_URL)\nconsole.log(NETWORK_NAME)"
             ],
             "outputs": []
         },
@@ -31,7 +31,7 @@
         {
             "language": "typescript",
             "source": [
-                "const RPC_URL = process.env.PRIVNET_URL || \"\"\nconst NETWORK_NAME = \"privnet\"\n\nconsole.log(RPC_URL)\nconsole.log(NETWORK_NAME)"
+                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet mbaseAmount = ethers.BigNumber.from(86400 * 30 * 2).mul(ethers.BigNumber.from(10).pow(18))\nlet startDate = Math.floor(Date.now() / 1000)\nlet endDate = Math.floor(startDate + 86400 * 30)"
             ],
             "outputs": []
         },
