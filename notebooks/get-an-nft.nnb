@@ -31,7 +31,7 @@
         {
             "language": "typescript",
             "source": [
-                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet mbaseAmount = ethers.BigNumber.from(86400 * 30 * 2).mul(ethers.BigNumber.from(10).pow(18))\nlet startDate = Math.floor(Date.now() / 1000)\nlet endDate = Math.floor(startDate + 86400 * 30)"
+                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet DURATION_SEC = 3600 * 1\nlet MBASE_PER_SEC = 1\nlet mbaseAmount = ethers.BigNumber.from(DURATION_SEC * MBASE_PER_SEC).mul(ethers.BigNumber.from(10).pow(18))\nlet startDate = Math.floor(Date.now() / 1000)\nlet endDate = Math.floor(startDate + DURATION_SEC)"
             ],
             "outputs": []
         },
