@@ -1,6 +1,6 @@
 {
 	"name": "@otcmarsbase/token-contract-types",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"main": "./typechain/index.ts",
 	"scripts": {
 		"test": "hardhat test",
