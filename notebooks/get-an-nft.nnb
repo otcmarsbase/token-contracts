@@ -31,7 +31,7 @@
         {
             "language": "typescript",
             "source": [
-                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet DURATION_SEC = 86400 * 30\nlet MBASE_PER_SEC = 8\nlet mbaseAmount = ethers.utils.parseUnits(`${DURATION_SEC * MBASE_PER_SEC}`, 18)\nlet startDate = Math.floor(Date.now() / 1000)\nlet endDate = Math.floor(startDate + DURATION_SEC)"
+                "let receiver = \"0x60c56553495612d4b93b6BC1deffE937223eaF51\"\nlet DURATION_SEC = 86400 * 1\nlet MBASE_PER_SEC = 1\nlet mbaseAmount = ethers.utils.parseUnits(`${DURATION_SEC * MBASE_PER_SEC}`, 18)\nlet startDate = Math.floor(Date.now() / 1000)\nlet endDate = Math.floor(startDate + DURATION_SEC)"
             ],
             "outputs": []
         },
