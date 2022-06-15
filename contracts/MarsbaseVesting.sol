@@ -59,6 +59,9 @@ contract MarsbaseVesting is ERC721Enumerable {
     // Mapping from token ID to vesting data
     mapping(uint256 => VestingRecord) internal _vestings;
 
+	// next vesting id
+	uint256 internal _nextVestingId = 0;
+
 	// splitting fee variable (multiplied by 1e5 to achieve 5 digits precision)
 	uint256 private _feeSplit = 0;
 
@@ -153,7 +156,7 @@ contract MarsbaseVesting is ERC721Enumerable {
         );
 
         // mint token with new id
-        uint256 tokenId = this.totalSupply();
+        uint256 tokenId = _nextVestingId++;
         _mint(receiver, tokenId);
 
         // transfer erc20 tokens from msg.sender to this contract address based on amount param
